@@ -3,6 +3,7 @@ from datetime import datetime
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
+from app.guardrails import BLOCK_MESSAGE, PRIVACY_NOTE, check_input, check_output
 from app.llm import get_llm
 from app.tools import TOOLS
 
@@ -16,6 +17,9 @@ Information rules:
 3. If a tool returns nothing useful, say you do not have that information.
 4. Keep answers short, clear and friendly.
 5. Stay on the topic of this parking facility. Politely decline other topics.
+6. Never share staff names, phone numbers, email addresses, payment card
+   numbers or any other customer's details. If asked, say that this
+   information is private.
 
 Reservation rules:
 1. When the customer wants to reserve, collect these five details, asking for
@@ -45,8 +49,16 @@ def build_agent():
 
 
 def chat(agent, message: str, thread_id: str = "default") -> str:
+    guard = check_input(message)
+    if not guard.allowed:
+        return BLOCK_MESSAGE
+
     result = agent.invoke(
-        {"messages": [{"role": "user", "content": message}]},
+        {"messages": [{"role": "user", "content": guard.text}]},
         config={"configurable": {"thread_id": thread_id}},
     )
-    return result["messages"][-1].content
+    reply = check_output(result["messages"][-1].content)
+
+    if guard.flags:
+        reply = f"{PRIVACY_NOTE}\n\n{reply}"
+    return reply
