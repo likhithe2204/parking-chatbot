@@ -10,6 +10,8 @@ langgraph
 # Vector database and embeddings
 chromadb
 langchain-chroma
+langchain-huggingface
+langchain-text-splitters
 sentence-transformers
 
 # Guardrails (sensitive data detection)
