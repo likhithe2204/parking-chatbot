@@ -1,0 +1,25 @@
+# LLM and agent framework
+langchain
+langchain-core
+langchain-community
+langchain-groq
+langchain-google-genai
+langgraph
+
+# Vector database and embeddings
+chromadb
+langchain-chroma
+sentence-transformers
+
+# Guardrails (sensitive data detection)
+presidio-analyzer
+presidio-anonymizer
+spacy
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# Data and config
+pandas
+python-dotenv
+
+# Testing
+pytest
