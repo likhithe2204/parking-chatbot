@@ -4,9 +4,9 @@ from pathlib import Path
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "parking.db"
 
 
-def seed() -> None:
-    DB_PATH.parent.mkdir(exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def seed(db_path: Path = DB_PATH) -> None:
+    db_path.parent.mkdir(exist_ok=True)
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
     cur.executescript(
@@ -53,7 +53,7 @@ def seed() -> None:
 
     conn.commit()
     conn.close()
-    print(f"Database created at {DB_PATH}")
+    print(f"Database created at {db_path}")
 
 
 if __name__ == "__main__":
