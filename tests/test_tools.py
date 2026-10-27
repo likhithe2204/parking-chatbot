@@ -1,5 +1,6 @@
 import pytest
 
+from app.tools import submit_reservation_request
 from app.seed_db import seed
 from app.tools import (
     TOOLS,
@@ -38,11 +39,40 @@ def test_working_hours_monday(db):
     assert "Monday: 06:00 to 23:00" in format_working_hours("monday", db_path=db)
 
 
-def test_agent_has_four_tools():
+
+def test_agent_has_six_tools():
     names = {t.name for t in TOOLS}
     assert names == {
         "search_parking_info",
         "check_working_hours",
         "check_prices",
         "check_availability",
+        "check_reservation_field",
+        "submit_reservation_request",
     }
+
+
+def test_reservation_tool_accepts_valid_request():
+    result = submit_reservation_request.invoke(
+        {
+            "first_name": "Likhith",
+            "last_name": "Edupuganti",
+            "car_number": "TS09AB1234",
+            "start": "2099-01-01 10:00",
+            "end": "2099-01-01 12:00",
+        }
+    )
+    assert "READY_FOR_ADMIN_REVIEW" in result
+
+
+def test_reservation_tool_reports_invalid_request():
+    result = submit_reservation_request.invoke(
+        {
+            "first_name": "Likhith",
+            "last_name": "Edupuganti",
+            "car_number": "ABC",
+            "start": "2099-01-01 10:00",
+            "end": "2099-01-01 12:00",
+        }
+    )
+    assert "INVALID" in result

@@ -5,6 +5,7 @@ from langchain_core.tools import tool
 from app.dynamic_data import get_availability, get_prices, get_working_hours
 from app.rag import retrieve
 from app.seed_db import DB_PATH
+from app.reservation import validate_field, validate_reservation
 
 
 def format_availability(zone: str = "", db_path: Path = DB_PATH) -> str:
@@ -63,5 +64,43 @@ def check_availability(zone: str = "") -> str:
     or 'Zone C', or leave empty to get all zones."""
     return format_availability(zone)
 
+@tool
+def submit_reservation_request(
+    first_name: str, last_name: str, car_number: str, start: str, end: str
+) -> str:
+    """Validate and record a reservation request. Call this only after the
+    customer has confirmed all details. Start and end must be in the format
+    YYYY-MM-DD HH:MM (24 hour clock)."""
+    request, errors = validate_reservation(first_name, last_name, car_number, start, end)
+    if errors:
+        return (
+            "STATUS: INVALID\n- "
+            + "\n- ".join(errors)
+            + "\nTell the customer what to fix and ask only for those fields."
+        )
+    return (
+        "STATUS: READY_FOR_ADMIN_REVIEW\n"
+        + request.summary()
+        + "\nTell the customer the details are recorded and will be sent to the "
+        "administrator for approval. Do not say the booking is confirmed."
+    )
 
-TOOLS = [search_parking_info, check_working_hours, check_prices, check_availability]
+@tool
+def check_reservation_field(field: str, value: str, start: str = "") -> str:
+    """Validate ONE reservation detail right after the customer gives it.
+    field must be one of: first_name, last_name, car_number, start, end.
+    Dates use the format YYYY-MM-DD HH:MM. When checking 'end', also pass the
+    already collected start value in 'start'."""
+    normalized, error = validate_field(field, value, start)
+    if error:
+        return f"INVALID: {error}. Ask the customer to provide {field} again."
+    return f"VALID: {normalized}"
+
+TOOLS = [
+    search_parking_info,
+    check_working_hours,
+    check_prices,
+    check_availability,
+    check_reservation_field,
+    submit_reservation_request,
+]
