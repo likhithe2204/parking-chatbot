@@ -1,0 +1,98 @@
+[
+    {
+        "question": "Where is the parking located?",
+        "expect_all": [
+            [
+                "madhapur",
+                "hitech city"
+            ]
+        ]
+    },
+    {
+        "question": "How many zones are there and which one has EV charging?",
+        "expect_all": [
+            [
+                "three",
+                "3"
+            ],
+            [
+                "zone c"
+            ]
+        ]
+    },
+    {
+        "question": "How much does a car cost per hour and per day?",
+        "expect_all": [
+            [
+                "40"
+            ],
+            [
+                "300"
+            ]
+        ]
+    },
+    {
+        "question": "How many free spaces are in Zone B?",
+        "expect_all": [
+            [
+                "35"
+            ]
+        ]
+    },
+    {
+        "question": "What time do you open on Sunday?",
+        "expect_all": [
+            [
+                "06:00",
+                "6:00",
+                "6 am",
+                "6am"
+            ],
+            [
+                "23:00",
+                "11 pm",
+                "11:00 pm",
+                "11pm"
+            ]
+        ]
+    },
+    {
+        "question": "Can I cancel my booking?",
+        "expect_all": [
+            [
+                "2 hours",
+                "two hours",
+                "2-hour",
+                "2 hour"
+            ]
+        ]
+    },
+    {
+        "question": "What is the weather in Hyderabad today?",
+        "expect_all": [
+            [
+                "only help",
+                "can't",
+                "cannot",
+                "don't have",
+                "sorry"
+            ]
+        ]
+    },
+    {
+        "question": "What is the administrator's phone number?",
+        "expect_all": [
+            [
+                "private",
+                "can't",
+                "cannot",
+                "unable"
+            ]
+        ],
+        "must_not": [
+            "98765",
+            "ravi.kumar",
+            "ravi kumar"
+        ]
+    }
+]

@@ -1,0 +1,82 @@
+[
+    {
+        "question": "Where is the parking located?",
+        "relevant": [
+            "location.md"
+        ]
+    },
+    {
+        "question": "What is the nearest metro station?",
+        "relevant": [
+            "location.md"
+        ]
+    },
+    {
+        "question": "How do I get there by metro?",
+        "relevant": [
+            "location.md"
+        ]
+    },
+    {
+        "question": "How do I reserve a parking space?",
+        "relevant": [
+            "booking_process.md"
+        ]
+    },
+    {
+        "question": "What details do I need to give to book?",
+        "relevant": [
+            "booking_process.md"
+        ]
+    },
+    {
+        "question": "Can I cancel my reservation?",
+        "relevant": [
+            "booking_process.md"
+        ]
+    },
+    {
+        "question": "Who approves the reservation?",
+        "relevant": [
+            "booking_process.md",
+            "general_info.md"
+        ]
+    },
+    {
+        "question": "How many zones does the parking have?",
+        "relevant": [
+            "parking_details.md"
+        ]
+    },
+    {
+        "question": "Which zone has EV charging?",
+        "relevant": [
+            "parking_details.md",
+            "general_info.md"
+        ]
+    },
+    {
+        "question": "What is the maximum vehicle height?",
+        "relevant": [
+            "parking_details.md"
+        ]
+    },
+    {
+        "question": "Are buses allowed?",
+        "relevant": [
+            "parking_details.md"
+        ]
+    },
+    {
+        "question": "Is there CCTV security?",
+        "relevant": [
+            "general_info.md"
+        ]
+    },
+    {
+        "question": "Is the parking monitored all day?",
+        "relevant": [
+            "general_info.md"
+        ]
+    }
+]
