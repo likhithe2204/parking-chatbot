@@ -1,6 +1,4 @@
-from dotenv import load_dotenv
-from langchain.chat_models import init_chat_model
+from app.llm import get_llm
 
-load_dotenv()
-llm = init_chat_model("groq:openai/gpt-oss-20b")
+llm = get_llm()
 print(llm.invoke("Say hello in one line").content)
