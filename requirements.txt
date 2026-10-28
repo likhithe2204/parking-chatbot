@@ -26,3 +26,5 @@ python-dotenv
 
 # Testing
 pytest
+
+python-pptx

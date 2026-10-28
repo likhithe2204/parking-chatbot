@@ -66,7 +66,7 @@ guardrails and the evaluation.
 ## Architecture
 
 <p align="center">
-  <img src="docs/screenshots/architecture.png" alt="System architecture" width="95%">
+  <img src="docs/architecture.png" alt="System architecture" width="95%">
 </p>
 
 ---
@@ -141,11 +141,11 @@ masks anything sensitive that slips into a reply.
 ### 6. Automated tests and CI
 
 <p align="center">
-  <img src="docs/screenshots/06b_ci_pipeline_automated.png" alt="Green CI pipeline" width="90%">
+  <img src="docs/screenshots/06b_ci_pipeline.png" alt="Green CI pipeline" width="90%">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/06a_testscases_passed.png" alt="44 tests passed" width="90%">
+  <img src="docs/screenshots/06a_tests_passed.png" alt="44 tests passed" width="90%">
 </p>
 
 
