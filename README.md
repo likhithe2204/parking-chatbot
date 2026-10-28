@@ -40,6 +40,8 @@ Built with Python, LangChain and LangGraph on a Retrieval-Augmented Generation (
 architecture. This repository currently covers **Stage 1**: the RAG chatbot, the
 guardrails and the evaluation.
 
+**Presentation:** [docs/parking_chatbot_stage1.pptx](docs/parking_chatbot_stage1.pptx)
+
 **Features**
 
 1. Answers questions about the facility: general information, location, zones, EV charging, booking process.
