@@ -12,7 +12,7 @@
     <img src="https://github.com/likhithe2204/parking-chatbot/actions/workflows/ci.yml/badge.svg" alt="CI status">
   </a>
   <img src="https://img.shields.io/badge/python-3.12-blue" alt="Python 3.12">
-  <img src="https://img.shields.io/badge/tests-44%20passed-brightgreen" alt="44 tests passed">
+  <img src="https://img.shields.io/badge/tests-68%20passed-brightgreen" alt="68 tests passed">
   <img src="https://img.shields.io/badge/LangChain-LangGraph-purple" alt="LangChain and LangGraph">
 </p>
 
@@ -252,9 +252,11 @@ than Recall@3.
 
 ## Testing and CI
 
-44 pytest tests cover SQL lookups, reservation validation, tools, guardrails and the
+68 pytest tests cover SQL lookups, reservation validation, tools, guardrails and the
 evaluation metrics. GitHub Actions runs them on every push
 (`.github/workflows/ci.yml`). The tests never call the LLM, so they need no API key.
+
+Every core module in app/ has at least 2 tests. The three demo scripts (smoke_test, check_retrieval, demo_guardrails) are excluded because they only print results.
 
 ```bash
 python -m pytest -v
