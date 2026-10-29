@@ -71,7 +71,7 @@ This repository covers **Stage 1** (RAG chatbot, guardrails, evaluation) and **S
 ## Architecture
 
 <p align="center">
-  <img src="docs/screenshots/architecture.png" alt="System architecture" width="95%">
+  <img src="docs/architecture.png" alt="System architecture" width="95%">
 </p>
 
 ---
