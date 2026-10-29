@@ -19,6 +19,7 @@ LIGHT = RGBColor(0xF1, 0xF4, 0xF9)
 PALE = RGBColor(0xC9, 0xD6, 0xEA)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 FONT = "Calibri"
+FOOTER = "Parking Reservation Chatbot  |  Stage 1"
 
 REQUIRED = [
     DOCS / "architecture.png",
@@ -136,7 +137,7 @@ def base_slide(title, notes=""):
     accent.fill.solid()
     accent.fill.fore_color.rgb = BLUE
     accent.line.fill.background()
-    add_text(slide, "Parking Reservation Chatbot  |  Stage 1", 0.6, 7.0, 8, 0.3, size=11)
+    add_text(slide, FOOTER, 0.6, 7.0, 8, 0.3, size=11)
     if notes:
         slide.notes_slide.notes_text_frame.text = notes
     return slide

@@ -1,11 +1,14 @@
 from pathlib import Path
 
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
+from app.admin_client import AdminServiceError
+from app.draft import build_request, clear_draft, get_draft, save_field
 from app.dynamic_data import get_availability, get_prices, get_working_hours
 from app.rag import retrieve
+from app.reservation import DATETIME_FORMAT
 from app.seed_db import DB_PATH
-from app.reservation import validate_field, validate_reservation
 
 
 def format_availability(zone: str = "", db_path: Path = DB_PATH) -> str:
@@ -33,6 +36,36 @@ def format_working_hours(day: str = "", db_path: Path = DB_PATH) -> str:
     if not rows:
         return f"No working hours found for '{day}'. Use a weekday name like Monday."
     return "\n".join(f"{r['day']}: {r['open_time']} to {r['close_time']}" for r in rows)
+
+
+_admin_agent = None
+_last_id: dict[str, str] = {}
+
+
+def get_admin_agent():
+    # Imported here because app.admin_agent itself imports from this module.
+    global _admin_agent
+    if _admin_agent is None:
+        from app.admin_agent import AdminAgent
+
+        _admin_agent = AdminAgent()
+    return _admin_agent
+
+
+def _thread_id(config: RunnableConfig) -> str:
+    configurable = (config or {}).get("configurable", {})
+    return configurable.get("thread_id", "default")
+
+
+def _sent_message(request_id: str, summary: str) -> str:
+    return (
+        "STATUS: SENT_TO_ADMINISTRATOR\n"
+        f"Request id: {request_id}\n"
+        f"{summary}\n"
+        "Tell the customer the request was sent to the administrator and is NOT "
+        "confirmed yet. Give the request id and say they can ask for the status "
+        "at any time. Never say it is approved."
+    )
 
 
 @tool
@@ -64,43 +97,86 @@ def check_availability(zone: str = "") -> str:
     or 'Zone C', or leave empty to get all zones."""
     return format_availability(zone)
 
+
 @tool
-def submit_reservation_request(
-    first_name: str, last_name: str, car_number: str, start: str, end: str
+def save_reservation_detail(
+    field: str, value: str, customer_words: str, config: RunnableConfig
 ) -> str:
-    """Validate and record a reservation request. Call this only after the
-    customer has confirmed all details. Start and end must be in the format
-    YYYY-MM-DD HH:MM (24 hour clock)."""
-    request, errors = validate_reservation(first_name, last_name, car_number, start, end)
+    """Save ONE reservation detail the customer just gave.
+    field must be one of: first_name, last_name, car_number, start, end.
+    value is the detail in clean form (dates as YYYY-MM-DD HH:MM on a 24 hour
+    clock). customer_words must be the exact words from the customer's latest
+    message that contain this detail, copied letter for letter, and only the
+    words for this one detail. Never guess or invent a detail. The reply tells
+    you what to ask next."""
+    return save_field(_thread_id(config), field, value, customer_words)
+
+
+@tool
+def submit_reservation_request(config: RunnableConfig) -> str:
+    """Send the saved reservation request to the human administrator for approval.
+    Call this only after all details are saved and the customer clearly confirmed
+    the summary. This tool takes no arguments."""
+    thread = _thread_id(config)
+    request, errors = build_request(thread)
+
     if errors:
+        if not get_draft(thread) and thread in _last_id:
+            return (
+                "STATUS: NOTHING_TO_SUBMIT\n"
+                "No new reservation is waiting. The last request sent in this "
+                f"conversation is {_last_id[thread]}. Do not send again. "
+                "Tell the customer this request id."
+            )
         return (
             "STATUS: INVALID\n- "
             + "\n- ".join(errors)
-            + "\nTell the customer what to fix and ask only for those fields."
+            + "\nTell the customer what is missing or wrong and collect it with "
+            "save_reservation_detail."
         )
-    return (
-        "STATUS: READY_FOR_ADMIN_REVIEW\n"
-        + request.summary()
-        + "\nTell the customer the details are recorded and will be sent to the "
-        "administrator for approval. Do not say the booking is confirmed."
-    )
+
+    try:
+        escalation = get_admin_agent().escalate(
+            request.first_name,
+            request.last_name,
+            request.car_number,
+            request.start.strftime(DATETIME_FORMAT),
+            request.end.strftime(DATETIME_FORMAT),
+        )
+    except AdminServiceError:
+        return (
+            "STATUS: ADMIN_UNAVAILABLE\n"
+            "The request could not be sent to the administrator. Tell the customer "
+            "it was NOT sent and to try again later. Do not say it is recorded or "
+            "approved."
+        )
+
+    clear_draft(thread)
+    _last_id[thread] = escalation.request_id
+    return _sent_message(escalation.request_id, request.summary())
+
 
 @tool
-def check_reservation_field(field: str, value: str, start: str = "") -> str:
-    """Validate ONE reservation detail right after the customer gives it.
-    field must be one of: first_name, last_name, car_number, start, end.
-    Dates use the format YYYY-MM-DD HH:MM. When checking 'end', also pass the
-    already collected start value in 'start'."""
-    normalized, error = validate_field(field, value, start)
-    if error:
-        return f"INVALID: {error}. Ask the customer to provide {field} again."
-    return f"VALID: {normalized}"
+def check_reservation_status(request_id: str) -> str:
+    """Check whether the administrator has approved or refused a reservation
+    request. Pass the request id the customer was given, like RES-3F9A1C."""
+    from app.admin_agent import decision_message
+
+    try:
+        record = get_admin_agent().get_decision(request_id.strip())
+    except AdminServiceError as exc:
+        if exc.status_code == 404:
+            return "No request was found with that id. Ask the customer to check the id."
+        return "The administrator service is not reachable right now. Ask the customer to try again later."
+    return decision_message(record)
+
 
 TOOLS = [
     search_parking_info,
     check_working_hours,
     check_prices,
     check_availability,
-    check_reservation_field,
+    save_reservation_detail,
     submit_reservation_request,
+    check_reservation_status,
 ]

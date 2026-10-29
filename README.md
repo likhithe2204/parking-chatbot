@@ -1,10 +1,10 @@
 <h1 align="center">Parking Space Reservation Chatbot</h1>
 
 <p align="center">
-    An AI assistant for a parking facility. It answers questions about the facility,
-    checks live prices and availability, collects reservation details with validation,
-    and protects sensitive data. Built with Python, LangChain and LangGraph on a
-    Retrieval-Augmented Generation (RAG) architecture
+  An AI assistant for a parking facility. It answers questions, checks live prices and
+  availability, collects reservation details, protects sensitive data, and sends every
+  booking to a human administrator for approval. Built with Python, LangChain and
+  LangGraph on a Retrieval-Augmented Generation (RAG) architecture.
 </p>
 
 <p align="center">
@@ -12,7 +12,7 @@
     <img src="https://github.com/likhithe2204/parking-chatbot/actions/workflows/ci.yml/badge.svg" alt="CI status">
   </a>
   <img src="https://img.shields.io/badge/python-3.12-blue" alt="Python 3.12">
-  <img src="https://img.shields.io/badge/tests-68%20passed-brightgreen" alt="68 tests passed">
+  <img src="https://img.shields.io/badge/tests-142%20passed-brightgreen" alt="142 tests passed">
   <img src="https://img.shields.io/badge/LangChain-LangGraph-purple" alt="LangChain and LangGraph">
 </p>
 
@@ -23,24 +23,24 @@
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [How It Works](#how-it-works)
-4. [Demo](#demo)
-5. [Setup](#setup)
-6. [Usage](#usage)
-7. [Evaluation](#evaluation)
-8. [Testing and CI](#testing-and-ci)
-9. [Security](#security)
-10. [Project Structure](#project-structure)
-11. [Roadmap](#roadmap)
+4. [Stage 1 Demo](#stage-1-demo)
+5. [Stage 2: Human-in-the-Loop Administrator](#stage-2-human-in-the-loop-administrator)
+6. [Setup](#setup)
+7. [Usage](#usage)
+8. [Evaluation](#evaluation)
+9. [Testing and CI](#testing-and-ci)
+10. [Security](#security)
+11. [Project Structure](#project-structure)
+12. [Roadmap](#roadmap)
 
 ---
 
 ## Overview
 
-Built with Python, LangChain and LangGraph on a Retrieval-Augmented Generation (RAG)
-architecture. This repository currently covers **Stage 1**: the RAG chatbot, the
-guardrails and the evaluation.
+This repository covers **Stage 1** (RAG chatbot, guardrails, evaluation) and **Stage 2**
+(human-in-the-loop administrator approval). Each stage is tagged in Git: `stage-1`, `stage-2`.
 
-**Presentation:** [docs/parking_chatbot_stage1.pptx](docs/parking_chatbot_stage1.pptx)
+**Presentations:** [Stage 1](docs/parking_chatbot_stage1.pptx) and [Stage 2](docs/parking_chatbot_stage2.pptx)
 
 **Features**
 
@@ -48,7 +48,9 @@ guardrails and the evaluation.
 2. Reports live data: working hours, prices and free spaces.
 3. Collects reservation details one field at a time and validates each answer.
 4. Masks sensitive data (email, phone, card number) and blocks prompt injection.
-5. Ships with an evaluation report: Recall@K, Precision@K, MRR and latency.
+5. Sends each reservation to a human administrator, who approves or refuses it.
+6. Lets the customer ask for the decision at any time.
+7. Ships with an evaluation report: Recall@K, Precision@K, MRR and latency.
 
 **Tech stack**
 
@@ -60,6 +62,7 @@ guardrails and the evaluation.
 | Vector database | Chroma |
 | Embeddings | `all-MiniLM-L6-v2` (sentence-transformers) |
 | Dynamic data | SQLite |
+| Admin service | FastAPI, httpx |
 | Guardrails | Microsoft Presidio and spaCy |
 | Testing | pytest, GitHub Actions |
 
@@ -87,18 +90,23 @@ through parameterized, read-only queries.
 The agent reads each question and decides whether to search the vector database, query SQL,
 or start the reservation flow.
 
-**4. Reservations are validated field by field.**
-Each answer is checked the moment it is given: names contain letters only, car numbers look
-like `TS09AB1234`, dates are in the future, and the end comes after the start. The bot never
-says a booking is confirmed, because an administrator must approve it (Stage 2).
+**4. Reservations are collected and validated field by field.**
+Each detail is saved in a draft the moment the customer gives it: names contain letters only,
+car numbers look like `TS09AB1234`, dates are in the future, and the end comes after the start.
+The code accepts a detail only if it appears in the customer's own message, so the model cannot
+invent values.
 
-**5. Guardrails protect both directions.**
+**5. Every booking goes to a human.**
+After the customer confirms, the booking is handed to the admin agent (Stage 2). The bot never
+says a booking is confirmed until the administrator has decided.
+
+**6. Guardrails protect both directions.**
 The input guardrail masks sensitive data and blocks prompt injection. The output guardrail
 masks anything sensitive that slips into a reply.
 
 ---
 
-## Demo
+## Stage 1 Demo
 
 ### 1. Vector database ingestion and retrieval check
 
@@ -143,13 +151,98 @@ masks anything sensitive that slips into a reply.
 ### 6. Automated tests and CI
 
 <p align="center">
-  <img src="docs/screenshots/06b_ci_pipeline.png" alt="Green CI pipeline" width="90%">
+  <img src="docs/screenshots/06a_tests_passed.png" alt="Tests passed" width="90%">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/06a_tests_passed.png" alt="44 tests passed" width="90%">
+  <img src="docs/screenshots/06b_ci_pipeline.png" alt="Green CI pipeline" width="90%">
 </p>
 
+---
+
+## Stage 2: Human-in-the-Loop Administrator
+
+After the customer confirms a booking, the chatbot hands it to a second agent. The admin agent
+writes a short note for the administrator and sends the request to a small REST service. A human
+administrator approves or refuses it in a terminal console. The customer can ask for the status
+at any time.
+
+<p align="center">
+  <img src="docs/screenshots/s2_architecture.png" alt="Stage 2 flow" width="95%">
+</p>
+
+**Design points**
+
+1. Every reservation detail must come from the customer's own words. The code rejects values the
+   model made up, and a reply guard stops summaries that do not match the saved details.
+2. The admin agent only writes the note. Customer details are attached by code, and the decision
+   text is produced by code, so a refusal can never be worded as an approval.
+3. If the model fails, the request is still sent with a default note. If the admin service is
+   down, the customer is told the request was not sent.
+4. The admin service requires an API key, validates every request again, and accepts only one
+   decision per request.
+
+**Run it** (three terminals, environment active in each)
+
+```bash
+uvicorn app.admin_api:create_app --factory --port 8000   # 1: admin service
+python -m app.chat                                       # 2: customer chat
+python -m app.admin_console                              # 3: administrator
+```
+
+Changes since Stage 1: [stage-1...stage-2](https://github.com/likhithe2204/parking-chatbot/compare/stage-1...stage-2)
+
+---
+
+### 1. Admin service API
+
+<p align="center">
+  <img src="docs/screenshots/s2_01_admin_api_docs.png" alt="Admin service API" width="90%">
+</p>
+
+---
+
+### 2. Administrator console
+
+<p align="center">
+  <img src="docs/screenshots/s2_02_admin_console.png" alt="Administrator console" width="90%">
+</p>
+
+---
+
+### 3. Admin agent
+
+<p align="center">
+  <img src="docs/screenshots/s2_03_admin_agent.png" alt="Admin agent" width="90%">
+</p>
+
+---
+
+### 4. End to end: request, pending, approved
+
+<p align="center">
+  <img src="docs/screenshots/s2_04_end_to_end.png" alt="End to end approval" width="90%">
+</p>
+
+---
+
+### 5. End to end: refused
+
+<p align="center">
+  <img src="docs/screenshots/s2_05_refusal.png" alt="End to end refusal" width="90%">
+</p>
+
+---
+
+### 6. Tests and CI
+
+<p align="center">
+  <img src="docs/screenshots/s2_06a_tests_passed.png" alt="Stage 2 tests passed" width="90%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/s2_06b_ci_pipeline.png" alt="Stage 2 CI pipeline" width="90%">
+</p>
 
 ---
 
@@ -173,7 +266,7 @@ source .venv/bin/activate
 uv pip install -r requirements.txt
 ```
 
-**2. Add your API key**
+**2. Add your keys**
 
 ```bash
 # Windows
@@ -182,7 +275,12 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-Open `.env` and paste your DIAL API key.
+Open `.env` and paste your DIAL API key. Set `ADMIN_API_KEY` to any long random string.
+Generate one with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(24))"
+```
 
 **3. Build the data stores**
 
@@ -195,9 +293,10 @@ python -m app.ingest    # fills the Chroma vector database (static data)
 
 ## Usage
 
-Start the chatbot:
+**Customer chat** (needs the admin service running in another terminal):
 
 ```bash
+uvicorn app.admin_api:create_app --factory --port 8000
 python -m app.chat
 ```
 
@@ -208,7 +307,16 @@ python -m app.chat
 | Where is the parking located? | Gives the address and the nearest metro |
 | How much does it cost for a car? | Reads prices from SQL |
 | Are there free spaces in Zone C? | Reads live availability from SQL |
-| I want to book a parking space | Starts the reservation flow |
+| I want to book a parking space | Collects the details, then sends the request to the administrator |
+| What is the status of my request? | Reports pending, approved or refused, with the reason |
+
+**Administrator**
+
+```bash
+python -m app.admin_console
+```
+
+Pick a request id, then type `approve` or `refuse` and an optional reason.
 
 **Other commands**
 
@@ -216,8 +324,11 @@ python -m app.chat
 |---|---|
 | `python -m app.check_retrieval` | Quick retrieval check |
 | `python -m app.demo_guardrails` | Shows the guardrails in action |
+| `python -m app.demo_admin_agent` | Sends a sample request through the admin agent |
 | `python -m app.evaluate` | Full evaluation, writes `docs/evaluation_report.md` |
 | `python -m app.evaluate --skip-llm` | Evaluation without LLM calls |
+| `python scripts/build_deck.py` | Rebuilds the Stage 1 presentation |
+| `python scripts/build_deck_stage2.py` | Rebuilds the Stage 2 presentation |
 | `python -m pytest -v` | Runs all tests |
 
 ---
@@ -255,11 +366,14 @@ than Recall@3.
 
 ## Testing and CI
 
-68 pytest tests cover SQL lookups, reservation validation, tools, guardrails and the
-evaluation metrics. GitHub Actions runs them on every push
-(`.github/workflows/ci.yml`). The tests never call the LLM, so they need no API key.
+142 pytest tests cover SQL lookups, reservation validation, the reservation draft and reply
+guard, tools, guardrails, the evaluation metrics, and the admin store, API, client, console and
+agent. GitHub Actions runs them on every push (`.github/workflows/ci.yml`). The tests never call
+the LLM, so they need no API key.
 
-Every core module in app/ has at least 2 tests. The three demo scripts (smoke_test, check_retrieval, demo_guardrails) are excluded because they only print results.
+Every core module in `app/` has at least 2 tests. The demo scripts (`smoke_test`,
+`check_retrieval`, `demo_guardrails`, `demo_admin_agent`) are excluded because they only print
+results.
 
 ```bash
 python -m pytest -v
@@ -274,6 +388,8 @@ python -m pytest -v
 3. Prompt injection phrases are blocked before they reach the model.
 4. The system prompt forbids sharing staff or customer details.
 5. API keys live in `.env`, which is excluded from Git. `.env.example` shows the format.
+6. The admin service requires an API key and accepts one decision per request.
+7. Reservation details must come from the customer's own words, so the model cannot invent them.
 
 `data/static/internal_staff_notes.md` contains fake staff and customer details on purpose,
 to demonstrate that the guardrails stop private data from leaking.
@@ -293,19 +409,25 @@ parking-chatbot/
     seed_db.py           creates the SQLite database
     dynamic_data.py      read-only SQL lookups
     reservation.py       reservation validation
+    draft.py             reservation draft, customer-words checks, reply guard
     tools.py             agent tools
     guardrails.py        input and output protection
-    agent.py             agent, prompt and chat function
+    agent.py             chatbot agent, prompt and chat function
     chat.py              interactive chat loop
+    admin_store.py       reservation requests and decisions (SQLite)
+    admin_api.py         admin REST service (FastAPI)
+    admin_client.py      REST client used by the agent and the console
+    admin_agent.py       second agent: note, send, read decision
+    admin_console.py     terminal for the human administrator
     evaluation.py        metric functions
     evaluate.py          evaluation runner and report writer
   data/
     static/              knowledge base (markdown files)
     eval/                evaluation questions
   docs/
-    architecture.png
-    screenshots/
+    screenshots/         architecture diagrams and proof screenshots
     evaluation_report.md
+  scripts/               presentation builders
   tests/                 pytest tests
   .github/workflows/     CI pipeline
 ```
@@ -317,6 +439,6 @@ parking-chatbot/
 | Stage | Scope | Status |
 |---|---|---|
 | 1 | RAG chatbot, vector database, guardrails, evaluation | Done |
-| 2 | Human-in-the-loop administrator agent | Planned |
+| 2 | Human-in-the-loop administrator agent | Done |
 | 3 | MCP server that records confirmed reservations | Planned |
 | 4 | Full orchestration with LangGraph | Planned |

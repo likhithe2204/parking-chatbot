@@ -23,6 +23,9 @@ en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_
 # Data and config
 pandas
 python-dotenv
+fastapi
+uvicorn
+httpx
 
 # Testing
 pytest

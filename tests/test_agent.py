@@ -37,3 +37,11 @@ def test_sensitive_output_is_masked():
 
 def test_system_prompt_accepts_todays_date():
     assert "2026-10-28" in agent.SYSTEM_PROMPT.format(today="2026-10-28")
+
+def test_chat_registers_the_customers_message_for_the_draft_checks(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        agent, "begin_turn", lambda thread, message: seen.update(thread=thread, message=message)
+    )
+    agent.chat(FakeAgent(), "My name is Likhith", thread_id="t9")
+    assert seen == {"thread": "t9", "message": "My name is Likhith"}
