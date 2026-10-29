@@ -1,4 +1,5 @@
 from app.admin_client import AdminClient, AdminServiceError
+from app.mcp_client import RecorderError, ReservationRecorder
 
 
 def format_request(record: dict) -> str:
@@ -14,7 +15,34 @@ def format_request(record: dict) -> str:
     return "\n".join(lines)
 
 
-def _review(client, request_id: str, input_fn, output_fn) -> None:
+def _save(recorder, record: dict, output_fn) -> bool:
+    try:
+        result = recorder.record(record)
+    except RecorderError as exc:
+        output_fn(f"Warning: approved, but the booking was not saved: {exc}")
+        output_fn("Start the MCP server, then type s at the next prompt to save it.")
+        return False
+    output_fn(f"MCP server: {result}")
+    return True
+
+
+def _sync(client, recorder, output_fn) -> None:
+    if recorder is None:
+        output_fn("No MCP server is configured.")
+        return
+    try:
+        approved = client.list_requests("APPROVED")
+    except AdminServiceError as exc:
+        output_fn(f"Error: {exc}")
+        return
+    if not approved:
+        output_fn("No approved bookings to save.")
+        return
+    for record in approved:
+        _save(recorder, record, output_fn)
+
+
+def _review(client, request_id: str, input_fn, output_fn, recorder=None) -> None:
     try:
         record = client.get_request(request_id)
     except AdminServiceError as exc:
@@ -34,14 +62,17 @@ def _review(client, request_id: str, input_fn, output_fn) -> None:
     decision = "APPROVED" if answer == "approve" else "REFUSED"
     reason = input_fn("Reason (optional): ").strip()
     try:
-        client.decide(record["id"], decision, reason)
+        decided = client.decide(record["id"], decision, reason)
     except AdminServiceError as exc:
         output_fn(f"Error: {exc}")
         return
     output_fn(f"{record['id']} marked {decision}.")
 
+    if decision == "APPROVED" and recorder is not None:
+        _save(recorder, decided, output_fn)
 
-def run(client, input_fn=input, output_fn=print) -> None:
+
+def run(client, input_fn=input, output_fn=print, recorder=None) -> None:
     output_fn("Parking administrator console")
     while True:
         try:
@@ -60,17 +91,22 @@ def run(client, input_fn=input, output_fn=print) -> None:
                     f"{record['car_number']}  {record['start']} -> {record['end']}"
                 )
 
-        choice = input_fn("\nRequest id to review, Enter to refresh, q to quit: ").strip()
+        choice = input_fn(
+            "\nRequest id to review, s to save approved bookings, "
+            "Enter to refresh, q to quit: "
+        ).strip()
         if choice.lower() == "q":
             return
-        if choice:
-            _review(client, choice, input_fn, output_fn)
+        if choice.lower() == "s":
+            _sync(client, recorder, output_fn)
+        elif choice:
+            _review(client, choice, input_fn, output_fn, recorder)
 
 
 def main() -> None:
     client = AdminClient()
     try:
-        run(client)
+        run(client, recorder=ReservationRecorder())
     finally:
         client.close()
 

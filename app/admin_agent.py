@@ -7,6 +7,7 @@ from langchain_core.tools import tool
 
 from app.admin_client import AdminClient, AdminServiceError
 from app.llm import get_llm
+from app.mcp_client import RecorderError, ReservationRecorder
 from app.tools import format_availability
 
 logger = logging.getLogger(__name__)
@@ -56,10 +57,22 @@ def decision_message(record: dict) -> str:
     return text
 
 
+RECORDING_NOTES = {
+    "RECORDED": " Your booking is now saved.",
+    "ALREADY_RECORDED": " Your booking is saved.",
+    "RECORD_FAILED": " The booking could not be saved yet. Please ask again in a moment.",
+}
+
+
+def status_message(record: dict, recording: str) -> str:
+    return decision_message(record) + RECORDING_NOTES.get(recording, "")
+
+
 class AdminAgent:
-    def __init__(self, client=None, llm=None):
+    def __init__(self, client=None, llm=None, recorder=None):
         self.client = client or AdminClient()
         self._llm = llm
+        self.recorder = recorder or ReservationRecorder()
 
     def escalate(
         self, first_name: str, last_name: str, car_number: str, start: str, end: str
@@ -126,3 +139,18 @@ class AdminAgent:
 
     def get_decision(self, request_id: str) -> dict:
         return self.client.get_request(request_id)
+
+    def settle(self, request_id: str) -> tuple[dict, str]:
+        """Read the decision. If the request is approved, make sure the booking is
+        saved through the MCP server. Safe to call repeatedly."""
+        record = self.client.get_request(request_id)
+        if record["status"] != "APPROVED":
+            return record, "NOT_APPROVED"
+        try:
+            result = self.recorder.record(record)
+        except RecorderError as exc:
+            logger.warning("Approved booking %s was not saved: %s", request_id, exc)
+            return record, "RECORD_FAILED"
+        if result.startswith("ALREADY_RECORDED"):
+            return record, "ALREADY_RECORDED"
+        return record, "RECORDED"

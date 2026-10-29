@@ -16,9 +16,10 @@ DETAILS = [
 
 
 class FakeAdminAgent:
-    def __init__(self, error=None, record=None):
+    def __init__(self, error=None, record=None, recording="NOT_APPROVED"):
         self.error = error
         self.record = record or {"id": "RES-AAAAAA", "status": "PENDING", "reason": ""}
+        self.recording = recording
         self.calls = []
 
     def escalate(self, first_name, last_name, car_number, start, end):
@@ -31,6 +32,9 @@ class FakeAdminAgent:
         if self.error:
             raise self.error
         return self.record
+
+    def settle(self, request_id):
+        return self.get_decision(request_id), self.recording
 
 
 @pytest.fixture(autouse=True)
@@ -148,3 +152,17 @@ def test_save_tool_rejects_words_the_customer_did_not_say():
         config=CONFIG,
     )
     assert result.startswith("INVALID")
+
+def test_status_of_a_saved_booking_says_so(monkeypatch):
+    record = {"id": "RES-AAAAAA", "status": "APPROVED", "reason": ""}
+    use_agent(monkeypatch, FakeAdminAgent(record=record, recording="RECORDED"))
+    result = tools.check_reservation_status.invoke({"request_id": "RES-AAAAAA"})
+    assert "approved" in result
+    assert "now saved" in result
+
+
+def test_status_when_saving_failed_is_not_reported_as_saved(monkeypatch):
+    record = {"id": "RES-AAAAAA", "status": "APPROVED", "reason": ""}
+    use_agent(monkeypatch, FakeAdminAgent(record=record, recording="RECORD_FAILED"))
+    result = tools.check_reservation_status.invoke({"request_id": "RES-AAAAAA"})
+    assert "could not be saved" in result

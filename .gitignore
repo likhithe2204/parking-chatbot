@@ -13,3 +13,4 @@ chroma_db/
 __pycache__/
 *.db 
 .pytest_cache/
+data/confirmed_reservations.txt
