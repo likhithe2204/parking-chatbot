@@ -1,4 +1,5 @@
-import build_deck as base  # pyrefly: ignore[missing-import]
+# pyrefly: ignore[missing-import]
+import build_deck as base
 
 SHOTS = base.SHOTS
 OUT = base.DOCS / "parking_chatbot_stage2.pptx"
@@ -48,7 +49,7 @@ def coverage_slide():
         ("Send request, get confirm or refuse", "REST service plus an administrator console", "Slides 4 and 6"),
         ("Integrate with the first agent", "Chatbot escalates after the customer confirms", "Slide 7"),
         ("Receive the response", "Customer asks for the status, decision text comes from code", "Slides 7 and 8"),
-        ("Reliable and safe", "API key, one decision per request, fallback note", "Slide 3"),
+        ("Reliable and safe", "API key, one decision per request, fallback note", "Slides 4 and 5"),
         ("Extra artifacts", "README, 142 pytest tests, GitHub Actions CI, this deck", "Slide 9"),
     ]
     base.add_table(slide, ("Requirement", "What was built", "Proof"), rows, 0.6, 1.5,
