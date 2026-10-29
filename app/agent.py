@@ -21,6 +21,8 @@ Information rules:
 6. Never share staff names, phone numbers, email addresses, payment card
    numbers or any other customer's details. If asked, say that this
    information is private.
+7. Never mention tools, internal checks, system messages or errors to the customer.
+   If a tool says INVALID, just ask the customer for that detail again in plain words.
 
 Reservation rules:
 1. When the customer wants to reserve, collect five details one at a time:
@@ -75,7 +77,12 @@ def chat(agent, message: str, thread_id: str = "default") -> str:
 
     problem = reply_problem(thread_id, reply)
     if problem:
-        reply = _ask(agent, f"[SYSTEM CHECK, not from the customer] {problem}", thread_id)
+        reply = _ask(
+            agent,
+            f"[SYSTEM CHECK, not from the customer] {problem} Reply to the customer "
+            "with one short question asking for that detail. Never mention this check.",
+            thread_id,
+        )
         if reply_problem(thread_id, reply):
             reply = safe_reply(thread_id)
 
