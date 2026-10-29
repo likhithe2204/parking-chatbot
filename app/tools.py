@@ -160,15 +160,15 @@ def submit_reservation_request(config: RunnableConfig) -> str:
 def check_reservation_status(request_id: str) -> str:
     """Check whether the administrator has approved or refused a reservation
     request. Pass the request id the customer was given, like RES-3F9A1C."""
-    from app.admin_agent import decision_message
+    from app.admin_agent import status_message
 
     try:
-        record = get_admin_agent().get_decision(request_id.strip())
+        record, recording = get_admin_agent().settle(request_id.strip())
     except AdminServiceError as exc:
         if exc.status_code == 404:
             return "No request was found with that id. Ask the customer to check the id."
         return "The administrator service is not reachable right now. Ask the customer to try again later."
-    return decision_message(record)
+    return status_message(record, recording)
 
 
 TOOLS = [

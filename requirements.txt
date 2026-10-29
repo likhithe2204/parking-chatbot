@@ -26,6 +26,7 @@ python-dotenv
 fastapi
 uvicorn
 httpx
+mcp<2
 
 # Testing
 pytest

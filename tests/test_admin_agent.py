@@ -2,7 +2,8 @@ import pytest
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 
-from app.admin_agent import AdminAgent, decision_message
+from app.admin_agent import AdminAgent, decision_message, status_message
+from app.mcp_client import RecorderError
 from app.admin_client import AdminServiceError
 
 DETAILS = dict(
@@ -121,3 +122,61 @@ def test_refused_message_is_never_worded_as_an_approval():
     text = decision_message({"id": "RES-AAAAAA", "status": "REFUSED", "reason": "zone full"})
     assert "refused" in text
     assert "approved" not in text
+
+class RecordingClient:
+    def __init__(self, status):
+        self.status = status
+
+    def get_request(self, request_id):
+        return {"id": request_id, "status": self.status, "reason": ""}
+
+
+class FakeRecorder:
+    def __init__(self, result="SAVED: line", error=None):
+        self.result = result
+        self.error = error
+        self.recorded = []
+
+    def record(self, record):
+        if self.error:
+            raise self.error
+        self.recorded.append(record["id"])
+        return self.result
+
+
+def test_settle_saves_an_approved_booking():
+    recorder = FakeRecorder()
+    agent = AdminAgent(client=RecordingClient("APPROVED"), llm=None, recorder=recorder)
+    record, recording = agent.settle("RES-AAAAAA")
+    assert recording == "RECORDED"
+    assert recorder.recorded == ["RES-AAAAAA"]
+    assert record["status"] == "APPROVED"
+
+
+def test_settle_reports_an_already_saved_booking():
+    recorder = FakeRecorder(result="ALREADY_RECORDED: line")
+    agent = AdminAgent(client=RecordingClient("APPROVED"), llm=None, recorder=recorder)
+    assert agent.settle("RES-AAAAAA")[1] == "ALREADY_RECORDED"
+
+
+def test_settle_keeps_the_decision_when_saving_fails():
+    recorder = FakeRecorder(error=RecorderError("down"))
+    agent = AdminAgent(client=RecordingClient("APPROVED"), llm=None, recorder=recorder)
+    record, recording = agent.settle("RES-AAAAAA")
+    assert recording == "RECORD_FAILED"
+    assert record["status"] == "APPROVED"
+
+
+def test_settle_does_not_save_pending_or_refused_requests():
+    for status in ("PENDING", "REFUSED"):
+        recorder = FakeRecorder()
+        agent = AdminAgent(client=RecordingClient(status), llm=None, recorder=recorder)
+        assert agent.settle("RES-AAAAAA")[1] == "NOT_APPROVED"
+        assert recorder.recorded == []
+
+
+def test_status_message_adds_the_saving_outcome():
+    record = {"id": "RES-AAAAAA", "status": "APPROVED", "reason": ""}
+    assert "now saved" in status_message(record, "RECORDED")
+    assert "could not be saved" in status_message(record, "RECORD_FAILED")
+    assert status_message(record, "NOT_APPROVED") == decision_message(record)
