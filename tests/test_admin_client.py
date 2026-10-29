@@ -71,3 +71,11 @@ def test_unreachable_service_becomes_a_readable_exception():
     with pytest.raises(AdminServiceError) as error:
         make_client(handler).list_requests()
     assert "Cannot reach" in str(error.value)
+
+def test_error_carries_the_status_code():
+    def handler(request):
+        return httpx.Response(404, json={"detail": "Request not found"})
+
+    with pytest.raises(AdminServiceError) as error:
+        make_client(handler).get_request("RES-NOPE00")
+    assert error.value.status_code == 404

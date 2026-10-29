@@ -1,3 +1,4 @@
+from email import message
 import os
 
 import httpx
@@ -7,7 +8,9 @@ load_dotenv()
 
 
 class AdminServiceError(Exception):
-    pass
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def _detail(response: httpx.Response) -> str:
@@ -33,7 +36,8 @@ class AdminClient:
             raise AdminServiceError(f"Cannot reach the admin service: {exc}") from exc
         if response.status_code >= 400:
             raise AdminServiceError(
-                f"Admin service error {response.status_code}: {_detail(response)}"
+                f"Admin service error {response.status_code}: {_detail(response)}",
+                status_code=response.status_code,
             )
         return response.json()
 
