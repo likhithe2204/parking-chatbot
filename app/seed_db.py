@@ -32,6 +32,14 @@ def seed(db_path: Path = DB_PATH) -> None:
             total_spaces INTEGER NOT NULL,
             available_spaces INTEGER NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS bookings (
+            request_id TEXT PRIMARY KEY,
+            zone TEXT NOT NULL,
+            car_number TEXT NOT NULL,
+            period_start TEXT NOT NULL,
+            period_end TEXT NOT NULL
+        );
         """
     )
 

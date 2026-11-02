@@ -1,4 +1,5 @@
 import asyncio
+import httpx
 
 import pytest
 
@@ -86,3 +87,16 @@ def test_a_slow_server_times_out(monkeypatch):
     with pytest.raises(RecorderError) as error:
         recorder(timeout=0.05).record(RECORD)
     assert "Cannot reach" in str(error.value)
+
+def test_a_rejected_api_key_is_named_clearly(monkeypatch):
+    async def behavior(arguments):
+        request = httpx.Request("POST", "http://127.0.0.1:8001/mcp")
+        raise httpx.HTTPStatusError(
+            "401 Unauthorized", request=request, response=httpx.Response(401, request=request)
+        )
+
+    fake_call(monkeypatch, behavior)
+    with pytest.raises(RecorderError) as error:
+        recorder().record(RECORD)
+    assert "rejected the API key" in str(error.value)
+    assert "Cannot reach" not in str(error.value)

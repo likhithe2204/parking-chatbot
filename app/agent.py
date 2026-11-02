@@ -40,10 +40,10 @@ Reservation rules:
 4. When the tool says ALL_DETAILS_COLLECTED, show the summary and ask the
    customer to confirm. Call submit_reservation_request (it takes no arguments)
    only after a clear yes.
-5. If submit_reservation_request returns STATUS: SENT_TO_ADMINISTRATOR, tell the
-   customer the request was sent to the administrator, give the request id, and
-   say it is NOT confirmed until the administrator decides. If it returns
-   ADMIN_UNAVAILABLE, say the request was not sent and ask them to try again later.
+5. If submit_reservation_request returns STATUS: SUBMITTED, tell the customer the
+   request is being sent to the administrator and is NOT confirmed yet. The request
+   id is added automatically right after your reply, so never make one up. If it
+   returns NOTHING_TO_SUBMIT, tell the customer the request id it gives.
 6. When the customer asks about their request, call check_reservation_status with
    the request id and repeat what it says. Never say a request is approved unless
    the tool says so."""

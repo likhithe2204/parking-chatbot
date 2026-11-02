@@ -6,6 +6,9 @@ from app.admin_agent import AdminAgent, decision_message, status_message
 from app.mcp_client import RecorderError
 from app.admin_client import AdminServiceError
 
+from app import admin_agent as admin_agent_module
+from app.bookings import NoSpaceAvailable
+
 DETAILS = dict(
     first_name="Likhith",
     last_name="Edupuganti",
@@ -180,3 +183,66 @@ def test_status_message_adds_the_saving_outcome():
     assert "now saved" in status_message(record, "RECORDED")
     assert "could not be saved" in status_message(record, "RECORD_FAILED")
     assert status_message(record, "NOT_APPROVED") == decision_message(record)
+
+def check_availability_call():
+    return AIMessage(
+        content="", tool_calls=[{"name": "check_availability", "args": {}, "id": "call-0"}]
+    )
+
+
+class FakeAllocator:
+    def __init__(self, error=None):
+        self.error = error
+        self.allocated = []
+
+    def __call__(self, record):
+        if self.error:
+            raise self.error
+        self.allocated.append(record["id"])
+        return "Zone B", True
+
+
+def test_settle_takes_a_space_for_an_approved_booking():
+    allocator = FakeAllocator()
+    recorder = FakeRecorder()
+    agent = AdminAgent(
+        client=RecordingClient("APPROVED"), llm=None, recorder=recorder, allocator=allocator
+    )
+    assert agent.settle("RES-AAAAAA")[1] == "RECORDED"
+    assert allocator.allocated == ["RES-AAAAAA"]
+    assert recorder.recorded == ["RES-AAAAAA"]
+
+
+def test_settle_reports_no_space_and_does_not_save():
+    allocator = FakeAllocator(error=NoSpaceAvailable("full"))
+    recorder = FakeRecorder()
+    agent = AdminAgent(
+        client=RecordingClient("APPROVED"), llm=None, recorder=recorder, allocator=allocator
+    )
+    record, recording = agent.settle("RES-AAAAAA")
+    assert recording == "NO_SPACE"
+    assert record["status"] == "APPROVED"
+    assert recorder.recorded == []
+
+
+def test_settle_takes_no_space_for_pending_or_refused_requests():
+    for status in ("PENDING", "REFUSED"):
+        allocator = FakeAllocator()
+        agent = AdminAgent(
+            client=RecordingClient(status), llm=None, recorder=FakeRecorder(), allocator=allocator
+        )
+        assert agent.settle("RES-AAAAAA")[1] == "NOT_APPROVED"
+        assert allocator.allocated == []
+
+
+def test_the_note_checks_availability_for_the_requested_period(monkeypatch):
+    seen = []
+
+    def fake_format(zone="", start="", end=""):
+        seen.append((zone, start, end))
+        return "Availability for the period"
+
+    monkeypatch.setattr(admin_agent_module, "format_availability", fake_format)
+    model = scripted(check_availability_call(), send_note("note"), AIMessage(content="DONE"))
+    AdminAgent(client=FakeClient(), llm=model, recorder=FakeRecorder()).escalate(**DETAILS)
+    assert seen == [("", DETAILS["start"], DETAILS["end"])]

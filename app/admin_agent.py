@@ -6,8 +6,10 @@ from langchain.agents import create_agent
 from langchain_core.tools import tool
 
 from app.admin_client import AdminClient, AdminServiceError
+from app.bookings import NoSpaceAvailable
 from app.llm import get_llm
 from app.mcp_client import RecorderError, ReservationRecorder
+from app.messages import RECORDING_NOTES, decision_message, status_message  
 from app.tools import format_availability
 
 logger = logging.getLogger(__name__)
@@ -42,49 +44,25 @@ def default_note(first_name: str, last_name: str, car_number: str, start: str, e
     )
 
 
-def decision_message(record: dict) -> str:
-    request_id = record["id"]
-    status = record["status"]
-    if status == "PENDING":
-        return f"Request {request_id} is still waiting for the administrator's decision."
-
-    if status == "APPROVED":
-        text = f"Good news: the administrator approved request {request_id}."
-    else:
-        text = f"Sorry, the administrator refused request {request_id}."
-    if record.get("reason"):
-        text += f" Reason: {record['reason']}"
-    return text
-
-
-RECORDING_NOTES = {
-    "RECORDED": " Your booking is now saved.",
-    "ALREADY_RECORDED": " Your booking is saved.",
-    "RECORD_FAILED": " The booking could not be saved yet. Please ask again in a moment.",
-}
-
-
-def status_message(record: dict, recording: str) -> str:
-    return decision_message(record) + RECORDING_NOTES.get(recording, "")
-
-
 class AdminAgent:
-    def __init__(self, client=None, llm=None, recorder=None):
+    def __init__(self, client=None, llm=None, recorder=None, allocator=None):
         self.client = client or AdminClient()
         self._llm = llm
         self.recorder = recorder or ReservationRecorder()
+        self.allocator = allocator
 
     def escalate(
         self, first_name: str, last_name: str, car_number: str, start: str, end: str
     ) -> Escalation:
         sent: dict = {}
 
+
         @tool
         def check_availability(zone: str = "") -> str:
-            """Get the number of free parking spaces right now. Pass 'Zone A',
-            'Zone B' or 'Zone C', or leave empty to get all zones."""
+            """Get the number of free parking spaces for the customer's requested
+            period. Pass 'Zone A', 'Zone B' or 'Zone C', or leave empty to get all zones."""
             try:
-                return format_availability(zone)
+                return format_availability(zone, start, end)
             except sqlite3.Error:
                 return "Availability data is not available right now."
 
@@ -140,12 +118,24 @@ class AdminAgent:
     def get_decision(self, request_id: str) -> dict:
         return self.client.get_request(request_id)
 
+
     def settle(self, request_id: str) -> tuple[dict, str]:
-        """Read the decision. If the request is approved, make sure the booking is
-        saved through the MCP server. Safe to call repeatedly."""
+        """Read the decision. If the request is approved, take a space for it and make
+        sure the booking is saved through the MCP server. Safe to call repeatedly."""
         record = self.client.get_request(request_id)
         if record["status"] != "APPROVED":
             return record, "NOT_APPROVED"
+
+        if self.allocator is not None:
+            try:
+                self.allocator(record)
+            except NoSpaceAvailable as exc:
+                logger.warning("Approved booking %s has no space: %s", request_id, exc)
+                return record, "NO_SPACE"
+            except sqlite3.Error as exc:
+                logger.warning("Could not reserve a space for %s: %s", request_id, exc)
+                return record, "RECORD_FAILED"
+
         try:
             result = self.recorder.record(record)
         except RecorderError as exc:
