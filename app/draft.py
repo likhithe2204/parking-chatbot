@@ -31,6 +31,8 @@ TIME_CLUE = re.compile(
 _drafts: dict[str, dict[str, str]] = {}
 _turns: dict[str, dict] = {}
 _sent: set[str] = set()
+_ready: dict[str, dict] = {}
+_last_request: dict[str, str] = {}
 
 
 def _norm(text: str) -> str:
@@ -47,7 +49,24 @@ def get_draft(thread_id: str) -> dict[str, str]:
 
 def clear_draft(thread_id: str) -> None:
     _drafts.pop(thread_id, None)
+    _ready.pop(thread_id, None)
     _sent.add(thread_id)
+
+def set_ready(thread_id: str, request: dict) -> None:
+    """Mark a confirmed reservation as ready for the workflow to send."""
+    _ready[thread_id] = dict(request)
+
+
+def take_ready(thread_id: str) -> dict | None:
+    return _ready.pop(thread_id, None)
+
+
+def remember_request(thread_id: str, request_id: str) -> None:
+    _last_request[thread_id] = request_id
+
+
+def last_request(thread_id: str) -> str | None:
+    return _last_request.get(thread_id)
 
 
 def missing_fields(draft: dict) -> list[str]:

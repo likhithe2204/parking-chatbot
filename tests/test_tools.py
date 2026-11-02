@@ -1,6 +1,6 @@
 import pytest
 
-
+from app import bookings
 from app.seed_db import seed
 from app.tools import (
     TOOLS,
@@ -52,3 +52,30 @@ def test_agent_has_seven_tools():
         "check_reservation_status",
     }
 
+def test_availability_without_a_period_says_it_is_for_right_now(db):
+    assert "right now" in format_availability(db_path=db)
+
+
+def test_availability_for_a_period_drops_after_a_booking(db):
+    bookings.allocate("RES-AAAAAA", "TS09AB1234", "2026-12-10 10:00", "2026-12-10 14:00", db)
+    text = format_availability("Zone B", "2026-12-10 10:00", "2026-12-10 14:00", db_path=db)
+    assert "Zone B: 34 of 80 spaces available" in text
+    assert "for 2026-12-10 10:00 to 2026-12-10 14:00" in text
+
+
+def test_availability_for_another_period_is_unchanged(db):
+    bookings.allocate("RES-AAAAAA", "TS09AB1234", "2026-12-10 10:00", "2026-12-10 14:00", db)
+    text = format_availability("Zone B", "2026-12-11 10:00", "2026-12-11 14:00", db_path=db)
+    assert "Zone B: 35 of 80 spaces available" in text
+
+
+def test_availability_needs_both_dates(db):
+    assert "both a start and an end" in format_availability(start="2026-12-10 10:00", db_path=db)
+
+
+def test_availability_rejects_bad_dates(db):
+    text = format_availability(start="tomorrow", end="later", db_path=db)
+    assert "YYYY-MM-DD HH:MM" in text
+    assert "The end must be after the start" in format_availability(
+        start="2026-12-10 14:00", end="2026-12-10 10:00", db_path=db
+    )

@@ -2,81 +2,239 @@
     {
         "question": "Where is the parking located?",
         "relevant": [
-            "location.md"
+            "location.md",
+            "directions_and_transport.md"
         ]
     },
     {
         "question": "What is the nearest metro station?",
         "relevant": [
-            "location.md"
+            "location.md",
+            "directions_and_transport.md"
         ]
     },
     {
         "question": "How do I get there by metro?",
         "relevant": [
-            "location.md"
+            "location.md",
+            "directions_and_transport.md"
         ]
     },
     {
         "question": "How do I reserve a parking space?",
         "relevant": [
-            "booking_process.md"
+            "booking_process.md",
+            "reservation_rules.md"
         ]
     },
     {
         "question": "What details do I need to give to book?",
         "relevant": [
-            "booking_process.md"
+            "booking_process.md",
+            "reservation_rules.md"
         ]
     },
     {
         "question": "Can I cancel my reservation?",
         "relevant": [
-            "booking_process.md"
+            "booking_process.md",
+            "cancellations_and_changes.md",
+            "faq.md"
         ]
     },
     {
         "question": "Who approves the reservation?",
         "relevant": [
             "booking_process.md",
-            "general_info.md"
+            "general_info.md",
+            "reservation_rules.md"
         ]
     },
     {
         "question": "How many zones does the parking have?",
         "relevant": [
-            "parking_details.md"
+            "parking_details.md",
+            "zones_and_vehicles.md",
+            "about_the_facility.md"
         ]
     },
     {
         "question": "Which zone has EV charging?",
         "relevant": [
             "parking_details.md",
-            "general_info.md"
+            "ev_charging.md",
+            "zones_and_vehicles.md"
         ]
     },
     {
         "question": "What is the maximum vehicle height?",
         "relevant": [
-            "parking_details.md"
+            "parking_details.md",
+            "zones_and_vehicles.md",
+            "faq.md"
         ]
     },
     {
         "question": "Are buses allowed?",
         "relevant": [
-            "parking_details.md"
+            "parking_details.md",
+            "zones_and_vehicles.md",
+            "faq.md"
         ]
     },
     {
         "question": "Is there CCTV security?",
         "relevant": [
-            "general_info.md"
+            "general_info.md",
+            "security_and_safety.md",
+            "about_the_facility.md"
         ]
     },
     {
         "question": "Is the parking monitored all day?",
         "relevant": [
+            "general_info.md",
+            "security_and_safety.md",
+            "about_the_facility.md"
+        ]
+    },
+    {
+        "question": "Which floor is Zone C on?",
+        "relevant": [
+            "parking_details.md",
+            "zones_and_vehicles.md"
+        ]
+    },
+    {
+        "question": "Can I park a two-wheeler?",
+        "relevant": [
+            "zones_and_vehicles.md",
+            "parking_details.md",
+            "faq.md"
+        ]
+    },
+    {
+        "question": "How does the system choose my zone?",
+        "relevant": [
+            "zones_and_vehicles.md"
+        ]
+    },
+    {
+        "question": "Which charging standards do the EV points support?",
+        "relevant": [
+            "ev_charging.md"
+        ]
+    },
+    {
+        "question": "Are there wheelchair accessible parking bays?",
+        "relevant": [
+            "accessibility.md"
+        ]
+    },
+    {
+        "question": "Is there a lift and a step-free entrance?",
+        "relevant": [
+            "accessibility.md",
+            "faq.md"
+        ]
+    },
+    {
+        "question": "What format should the car number have?",
+        "relevant": [
+            "reservation_rules.md"
+        ]
+    },
+    {
+        "question": "How long can a reservation last?",
+        "relevant": [
+            "reservation_rules.md",
+            "faq.md"
+        ]
+    },
+    {
+        "question": "What happens if the administrator refuses my request?",
+        "relevant": [
+            "reservation_rules.md",
+            "booking_process.md",
+            "faq.md"
+        ]
+    },
+    {
+        "question": "Can the assistant change a request I already sent?",
+        "relevant": [
+            "cancellations_and_changes.md",
+            "assistant_capabilities_and_privacy.md"
+        ]
+    },
+    {
+        "question": "What if I cancel less than 2 hours before the start?",
+        "relevant": [
+            "cancellations_and_changes.md",
+            "booking_process.md"
+        ]
+    },
+    {
+        "question": "Can I pay with UPI?",
+        "relevant": [
+            "payments.md"
+        ]
+    },
+    {
+        "question": "Will the assistant ask for my card number or UPI PIN?",
+        "relevant": [
+            "payments.md",
+            "assistant_capabilities_and_privacy.md"
+        ]
+    },
+    {
+        "question": "Are pets allowed inside the parking?",
+        "relevant": [
+            "parking_rules.md"
+        ]
+    },
+    {
+        "question": "Is smoking allowed?",
+        "relevant": [
+            "parking_rules.md"
+        ]
+    },
+    {
+        "question": "How do I reach the parking by bus?",
+        "relevant": [
+            "directions_and_transport.md"
+        ]
+    },
+    {
+        "question": "Where can a cab drop me off?",
+        "relevant": [
+            "directions_and_transport.md"
+        ]
+    },
+    {
+        "question": "Are there security cameras and emergency exits?",
+        "relevant": [
+            "security_and_safety.md",
             "general_info.md"
+        ]
+    },
+    {
+        "question": "What can the assistant do for me?",
+        "relevant": [
+            "assistant_capabilities_and_privacy.md",
+            "about_the_facility.md"
+        ]
+    },
+    {
+        "question": "Will the assistant share the administrator's phone number?",
+        "relevant": [
+            "assistant_capabilities_and_privacy.md",
+            "faq.md"
+        ]
+    },
+    {
+        "question": "What is the emergency number?",
+        "relevant": [
+            "security_and_safety.md"
         ]
     }
 ]

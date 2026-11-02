@@ -1,7 +1,6 @@
 import pytest
 
 from app import draft, tools
-from app.admin_agent import Escalation
 from app.admin_client import AdminServiceError
 
 CONFIG = {"configurable": {"thread_id": "t1"}}
@@ -16,17 +15,10 @@ DETAILS = [
 
 
 class FakeAdminAgent:
-    def __init__(self, error=None, record=None, recording="NOT_APPROVED"):
+    def __init__(self, error=None, record=None):
         self.error = error
         self.record = record or {"id": "RES-AAAAAA", "status": "PENDING", "reason": ""}
-        self.recording = recording
-        self.calls = []
-
-    def escalate(self, first_name, last_name, car_number, start, end):
-        self.calls.append((first_name, last_name, car_number, start, end))
-        if self.error:
-            raise self.error
-        return Escalation("RES-AAAAAA", "note", {"id": "RES-AAAAAA", "status": "PENDING"})
+        self.settled = []
 
     def get_decision(self, request_id):
         if self.error:
@@ -34,14 +26,15 @@ class FakeAdminAgent:
         return self.record
 
     def settle(self, request_id):
-        return self.get_decision(request_id), self.recording
+        self.settled.append(request_id)
+        return self.record, "RECORDED"
 
 
 @pytest.fixture(autouse=True)
 def clean_state(monkeypatch):
-    monkeypatch.setattr(draft, "_drafts", {})
-    monkeypatch.setattr(draft, "_turns", {})
-    monkeypatch.setattr(tools, "_last_id", {})
+    for name in ("_drafts", "_turns", "_ready", "_last_request"):
+        monkeypatch.setattr(draft, name, {})
+    monkeypatch.setattr(draft, "_sent", set())
 
 
 def use_agent(monkeypatch, agent):
@@ -71,48 +64,52 @@ def test_save_tool_tells_the_agent_what_to_ask_next():
     assert "last name" in result
 
 
-def test_submit_with_missing_details_is_rejected(monkeypatch):
-    agent = use_agent(monkeypatch, FakeAdminAgent())
+def test_save_tool_rejects_words_the_customer_did_not_say():
+    draft.begin_turn("t1", "TS09AB1234")
+    result = tools.save_reservation_detail.invoke(
+        {
+            "field": "start",
+            "value": "2099-01-01 10:00",
+            "customer_words": "2099-01-01 10:00",
+        },
+        config=CONFIG,
+    )
+    assert result.startswith("INVALID")
+
+
+def test_submit_with_missing_details_is_rejected():
     save("first_name", "Likhith")
     result = submit()
     assert "INVALID" in result
     assert "Missing details" in result
-    assert agent.calls == []
+    assert draft.take_ready("t1") is None
 
 
-def test_complete_request_is_sent_and_the_id_is_returned(monkeypatch):
-    agent = use_agent(monkeypatch, FakeAdminAgent())
+def test_a_complete_request_is_handed_to_the_workflow():
     fill_draft()
     result = submit()
-    assert "SENT_TO_ADMINISTRATOR" in result
+    assert "SUBMITTED" in result
+    assert "NOT confirmed" in result
+    assert draft.take_ready("t1") == {
+        "first_name": "Likhith",
+        "last_name": "Edupuganti",
+        "car_number": "TS09AB1234",
+        "start": "2099-01-01 10:00",
+        "end": "2099-01-01 12:00",
+    }
+
+
+def test_submitting_again_after_sending_reports_the_existing_request():
+    fill_draft()
+    submit()
+    draft.take_ready("t1")
+    draft.clear_draft("t1")
+    draft.remember_request("t1", "RES-AAAAAA")
+
+    result = submit()
+
+    assert "NOTHING_TO_SUBMIT" in result
     assert "RES-AAAAAA" in result
-    assert len(agent.calls) == 1
-
-
-def test_the_same_request_is_not_sent_twice(monkeypatch):
-    agent = use_agent(monkeypatch, FakeAdminAgent())
-    fill_draft()
-    submit()
-    second = submit()
-    assert len(agent.calls) == 1
-    assert "NOTHING_TO_SUBMIT" in second
-    assert "RES-AAAAAA" in second
-
-
-def test_draft_is_cleared_after_sending(monkeypatch):
-    use_agent(monkeypatch, FakeAdminAgent())
-    fill_draft()
-    submit()
-    assert draft.get_draft("t1") == {}
-
-
-def test_unreachable_administrator_is_never_reported_as_success(monkeypatch):
-    use_agent(monkeypatch, FakeAdminAgent(error=AdminServiceError("down")))
-    fill_draft()
-    result = submit()
-    assert "ADMIN_UNAVAILABLE" in result
-    assert "SENT_TO_ADMINISTRATOR" not in result
-    assert len(draft.get_draft("t1")) == 5
 
 
 def test_status_of_an_approved_request(monkeypatch):
@@ -141,28 +138,9 @@ def test_status_when_the_service_is_unreachable(monkeypatch):
     result = tools.check_reservation_status.invoke({"request_id": "RES-AAAAAA"})
     assert "not reachable" in result
 
-def test_save_tool_rejects_words_the_customer_did_not_say():
-    draft.begin_turn("t1", "TS09AB1234")
-    result = tools.save_reservation_detail.invoke(
-        {
-            "field": "start",
-            "value": "2099-01-01 10:00",
-            "customer_words": "2099-01-01 10:00",
-        },
-        config=CONFIG,
-    )
-    assert result.startswith("INVALID")
 
-def test_status_of_a_saved_booking_says_so(monkeypatch):
+def test_a_status_check_never_saves_a_booking(monkeypatch):
     record = {"id": "RES-AAAAAA", "status": "APPROVED", "reason": ""}
-    use_agent(monkeypatch, FakeAdminAgent(record=record, recording="RECORDED"))
-    result = tools.check_reservation_status.invoke({"request_id": "RES-AAAAAA"})
-    assert "approved" in result
-    assert "now saved" in result
-
-
-def test_status_when_saving_failed_is_not_reported_as_saved(monkeypatch):
-    record = {"id": "RES-AAAAAA", "status": "APPROVED", "reason": ""}
-    use_agent(monkeypatch, FakeAdminAgent(record=record, recording="RECORD_FAILED"))
-    result = tools.check_reservation_status.invoke({"request_id": "RES-AAAAAA"})
-    assert "could not be saved" in result
+    agent = use_agent(monkeypatch, FakeAdminAgent(record=record))
+    tools.check_reservation_status.invoke({"request_id": "RES-AAAAAA"})
+    assert agent.settled == []

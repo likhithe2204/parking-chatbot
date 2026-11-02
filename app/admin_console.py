@@ -1,3 +1,4 @@
+import argparse
 from app.admin_client import AdminClient, AdminServiceError
 from app.mcp_client import RecorderError, ReservationRecorder
 
@@ -68,8 +69,11 @@ def _review(client, request_id: str, input_fn, output_fn, recorder=None) -> None
         return
     output_fn(f"{record['id']} marked {decision}.")
 
-    if decision == "APPROVED" and recorder is not None:
-        _save(recorder, decided, output_fn)
+    if decision == "APPROVED":
+        if recorder is not None:
+            _save(recorder, decided, output_fn)
+        else:
+            output_fn("The workflow saves the booking and tells the customer.")
 
 
 def run(client, input_fn=input, output_fn=print, recorder=None) -> None:
@@ -91,10 +95,11 @@ def run(client, input_fn=input, output_fn=print, recorder=None) -> None:
                     f"{record['car_number']}  {record['start']} -> {record['end']}"
                 )
 
-        choice = input_fn(
-            "\nRequest id to review, s to save approved bookings, "
-            "Enter to refresh, q to quit: "
-        ).strip()
+        options = "Request id to review, "
+        if recorder is not None:
+            options += "s to save approved bookings, "
+        choice = input_fn(f"\n{options}Enter to refresh, q to quit: ").strip()
+
         if choice.lower() == "q":
             return
         if choice.lower() == "s":
@@ -104,9 +109,17 @@ def run(client, input_fn=input, output_fn=print, recorder=None) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="also save approvals through the MCP server (stand-alone use, as in Stage 3)",
+    )
+    args = parser.parse_args()
+
     client = AdminClient()
     try:
-        run(client, recorder=ReservationRecorder())
+        run(client, recorder=ReservationRecorder() if args.save else None)
     finally:
         client.close()
 
