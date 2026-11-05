@@ -620,6 +620,7 @@ MRR: **0.94**. End-to-end answer accuracy: 18 of 18 runs passed (100%). Precisio
 <p align="center">
   <img src="docs/screenshots/s4_09_knowledge_base_evaluation.png" alt="Evaluation with the larger knowledge base" width="90%">
 </p>
+
 ---
 
 ## Testing and CI
