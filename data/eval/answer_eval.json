@@ -47,7 +47,12 @@
                 "6:00",
                 "6 am",
                 "6am"
-            ],
+            ]
+        ]
+    },
+    {
+        "question": "What time do you close on Sunday?",
+        "expect_all": [
             [
                 "23:00",
                 "11 pm",

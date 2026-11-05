@@ -12,6 +12,11 @@ def recall_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
     if not relevant:
         return 0.0
     return len(set(retrieved[:k]) & relevant) / len(relevant)
+    
+
+def hit_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
+    """1.0 when at least one relevant document is among the top k, else 0.0."""
+    return 1.0 if set(retrieved[:k]) & relevant else 0.0
 
 
 def reciprocal_rank(retrieved: list[str], relevant: set[str]) -> float:

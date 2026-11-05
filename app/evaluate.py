@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from app.config import CHUNK_OVERLAP, CHUNK_SIZE, EMBEDDING_MODEL, ROOT
 from app.evaluation import (
     answer_matches,
+    hit_at_k,
     precision_at_k,
     recall_at_k,
     reciprocal_rank,
@@ -42,7 +43,9 @@ def evaluate_retrieval() -> dict:
     cases = _load("retrieval_eval.json")
     retrieve("warm up", k=1)
 
-    metrics = {f"{name}@{k}": [] for name in ("precision", "recall") for k in KS}
+    metrics = {
+        f"{name}@{k}": [] for name in ("precision", "recall", "hit") for k in KS
+    }
     ranks, latencies, misses = [], [], []
 
     for case in cases:
@@ -54,11 +57,12 @@ def evaluate_retrieval() -> dict:
         for k in KS:
             metrics[f"precision@{k}"].append(precision_at_k(sources, relevant, k))
             metrics[f"recall@{k}"].append(recall_at_k(sources, relevant, k))
+            metrics[f"hit@{k}"].append(hit_at_k(sources, relevant, k))
         ranks.append(reciprocal_rank(sources, relevant))
 
-        if recall_at_k(sources, relevant, max(KS)) < 1:
+        if hit_at_k(sources, relevant, max(KS)) == 0:
             misses.append(
-                f"{case['question']} -> got {sources}, wanted {sorted(relevant)}"
+                f"{case['question']} -> got {sources}, wanted one of {sorted(relevant)}"
             )
 
     summary = {name: statistics.mean(values) for name, values in metrics.items()}
@@ -141,23 +145,31 @@ def render_report(retrieval: dict, components: dict, agent: dict | None) -> str:
         "",
         "## Retrieval quality",
         "",
-        "| K | Precision@K | Recall@K |",
-        "|---|---|---|",
+        "| K | Precision@K | Recall@K | Hit@K |",
+        "|---|---|---|---|",
     ]
     for k in KS:
-        lines.append(f"| {k} | {m[f'precision@{k}']:.2f} | {m[f'recall@{k}']:.2f} |")
+        lines.append(
+            f"| {k} | {m[f'precision@{k}']:.2f} | {m[f'recall@{k}']:.2f} "
+            f"| {m[f'hit@{k}']:.2f} |"
+        )
     lines += [
         "",
         f"MRR: {m['mrr']:.2f}",
         "",
-        "Precision counts chunks, Recall counts source documents. The knowledge base is",
-        "small (a few chunks per document), so Precision@K is naturally lower than Recall@K.",
+        "Precision counts chunks, Recall and Hit count source documents.",
+        "Recall@K is strict: it needs every document that holds the answer. Several",
+        "documents repeat the same fact, and K chunks can cover at most K documents, so",
+        "Recall@K stays below 1.0 by design. Hit@K asks the practical question: is at",
+        "least one document that holds the answer among the top K?",
         "",
     ]
     if retrieval["misses"]:
-        lines += ["Questions where Recall@3 was below 1.0:", ""]
+        lines += ["Questions where no relevant document was found in the top 3:", ""]
         lines += [f"- {miss}" for miss in retrieval["misses"]]
         lines.append("")
+    else:
+        lines += ["Every question found at least one relevant document in the top 3.", ""]
 
     if agent:
         lines += [

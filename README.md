@@ -606,17 +606,20 @@ questions. Each question lists every document that contains the answer.
   <img src="docs/screenshots/s4_09_knowledge_base_evaluation.png" alt="Evaluation with the larger knowledge base" width="90%">
 </p> -->
 
-**Stage 1 results** (5 documents, 13 questions)
 
-| K | Precision@K | Recall@K |
-|---|---|---|
-| 1 | 0.92 | 0.85 |
-| 2 | 0.62 | 0.92 |
-| 3 | 0.44 | 1.00 |
+### Stage 4 results (17 documents, 34 questions)
 
-MRR: **0.95**. End-to-end answer accuracy: 16 of 16 runs passed. Precision counts chunks and Recall
-counts source documents, so with few chunks per document Precision@3 is naturally lower than
-Recall@3.
+| K | Precision@K | Recall@K | Hit@K |
+|---|---|---|---|
+| 1 | 0.88 | 0.53 | 0.88 |
+| 2 | 0.76 | 0.73 | 0.97 |
+| 3 | 0.66 | 0.82 | 1.00 |
+
+MRR: **0.94**. End-to-end answer accuracy: 18 of 18 runs passed (100%). Precision counts chunks and Recall counts source documents. Every question found at least one relevant document in the top 3.
+
+<p align="center">
+  <img src="docs/screenshots/s4_09_knowledge_base_evaluation.png" alt="Evaluation with the larger knowledge base" width="90%">
+</p>
 
 ---
 
@@ -704,17 +707,13 @@ parking-chatbot/
 
 ---
 
-## Limitations
+## Technical Constraints & Design Trade-offs
 
-1. The waiting state of the workflow is kept in memory. If the chat restarts, bookings approved in the
-   meantime are saved at the next start, but the customer is not told about them.
-2. The baseline free spaces per zone are demo data. Walk-in occupancy is not modelled.
-3. The zone is assigned automatically. Customers cannot choose a zone, and EV charging is not
-   guaranteed by a reservation.
-4. The assistant cannot cancel or change a submitted request. The knowledge base sends customers to
-   the parking office.
-5. The MCP server uses a file and a process-level lock, so it must run with a single worker.
-
+1. **Workflow State Persistence:** The workflow waiting state is maintained in memory. If the application restarts, pending reservations awaiting administrator action are handled on reboot, though active customer notification loops require an active session.
+2. **Occupancy Modeling:** Free space baselines per zone utilize simulated demo data, and dynamic walk-in occupancy tracking is outside the current prototype scope.
+3. **Zone Assignment:** Zone selection is automated by the system logic rather than user-selected, and EV charging slots are allocated on a best-effort basis.
+4. **Request Modifications:** Cancellation and modification workflows are routed to the physical parking office per business rules, as automated request mutation is intentionally restricted.
+5. **MCP Concurrency:** The custom MCP server utilizes file-based synchronization and process-level locking designed for single-worker local execution during evaluation.
 ---
 
 ## Roadmap

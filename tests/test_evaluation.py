@@ -1,5 +1,6 @@
 import json
 
+from app.evaluation import hit_at_k
 from app.config import ROOT, STATIC_DIR
 from app.evaluation import (
     answer_matches,
@@ -67,3 +68,9 @@ def test_answer_eval_cases_are_well_formed():
     for case in cases:
         assert case["question"]
         assert case["expect_all"]
+
+def test_hit_at_k_needs_only_one_relevant_document():
+    retrieved = ["x.md", "a.md", "y.md"]
+    assert hit_at_k(retrieved, {"a.md", "b.md"}, 3) == 1.0
+    assert hit_at_k(retrieved, {"a.md", "b.md"}, 1) == 0.0
+    assert recall_at_k(retrieved, {"a.md", "b.md"}, 3) == 0.5
