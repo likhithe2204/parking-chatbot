@@ -124,3 +124,8 @@ def test_s_saves_every_approved_booking():
     recorder = FakeRecorder()
     run_console(client, ["s", "q"], recorder)
     assert recorder.recorded == ["RES-AAAAAA"]
+
+def test_without_a_recorder_the_console_points_to_the_workflow():
+    client = FakeClient([PENDING])
+    output = run_console(client, ["RES-AAAAAA", "approve", "ok", "q"])
+    assert "workflow saves the booking" in output

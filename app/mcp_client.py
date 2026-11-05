@@ -1,9 +1,10 @@
 import asyncio
 import os
 
+import httpx
 from dotenv import load_dotenv
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 load_dotenv()
 
@@ -25,11 +26,16 @@ class ReservationRecorder:
         self.timeout = timeout
 
     async def _call(self, arguments: dict) -> str:
-        headers = {"X-API-Key": self.api_key}
-        async with streamablehttp_client(self.url, headers=headers) as (read, write, _):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                result = await session.call_tool("save_reservation", arguments)
+        http_client = httpx.AsyncClient(
+            headers={"X-API-Key": self.api_key},
+            timeout=httpx.Timeout(30.0, read=300.0),
+            follow_redirects=True,
+        )
+        async with http_client:
+            async with streamable_http_client(self.url, http_client=http_client) as (read, write, _):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.call_tool("save_reservation", arguments)
         text = " ".join(
             block.text for block in result.content if getattr(block, "text", None)
         )
@@ -54,6 +60,8 @@ class ReservationRecorder:
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             cause = _root_cause(exc)
-            raise RecorderError(
-                f"Cannot reach the MCP server: {cause or type(cause).__name__}"
-            ) from exc
+            if isinstance(cause, httpx.HTTPStatusError) and cause.response.status_code in (401, 403):
+                message = "The MCP server rejected the API key"
+            else:
+                message = f"Cannot reach the MCP server: {cause or type(cause).__name__}"
+            raise RecorderError(message) from exc

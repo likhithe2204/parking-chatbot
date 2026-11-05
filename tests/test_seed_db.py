@@ -37,3 +37,16 @@ def test_available_spaces_never_exceed_total(tmp_path):
     finally:
         conn.close()
     assert all(available <= total for total, available in rows)
+
+def test_seed_keeps_existing_bookings(tmp_path):
+    path = tmp_path / "t.db"
+    seed(path)
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "INSERT INTO bookings VALUES ('RES-AAAAAA', 'Zone A', 'TS09AB1234', "
+        "'2026-12-10 10:00', '2026-12-10 14:00')"
+    )
+    conn.commit()
+    conn.close()
+    seed(path)
+    assert _count(path, "bookings") == 1
